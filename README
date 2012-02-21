@@ -1,0 +1,5 @@
+This directory has scripts for testing various features that will play a
+key role in how git is used with the existing Mozilla repositories.
+
+Each such feature will be in a separate directory, and have it's own
+README file.
