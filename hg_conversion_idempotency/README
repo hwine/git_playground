@@ -1,0 +1,152 @@
+#!/bin/bash -e -u
+
+# Various recovery operations are most easily done when steps are
+# idempotent.
+
+# hg -> git has only one approach:
+#       - using the hggit extension
+# 
+# git -> hg has two approaches:
+#       - builtin convert utility
+#       - hggit extension
+# 
+
+
+# Simple, right? Start with the boilerplate
+
+DIR_TO_USE=${DIR_TO_USE:-$PWD}
+
+warn() { for m; do echo "$m"; done 1>&2 ; }
+die() { warn "$@"; exit 1; }
+
+init_and_config_hggit() {
+    # assume in directory already
+    # and allow to be initialized already
+    hg init || :
+    # enable hggit and set rtree
+    echo >>.hg/hgrc "[extensions]"
+    echo >>.hg/hgrc "hggit="
+    echo >>.hg/hgrc "[git]"
+    echo >>.hg/hgrc "intree=1"
+    hg help hggit | grep -q "^hg: unknown command" &&
+        die "hggit not installed"
+    return 0
+}
+
+test -d $DIR_TO_USE || die "Not a directory: '$DIR_TO_USE'"
+
+# hg -> git has only one approach:
+#       - using the hggit extension
+# build a source repo
+
+hg_git_01_source=$DIR_TO_USE/01_hg_2_git_source
+if ! test -d $hg_git_01_source; then
+    mkdir $hg_git_01_source
+    cd $hg_git_01_source
+    init_and_config_hggit
+    # create some files - no variation in content
+    echo "file 1" > file_1
+    hg add file_1
+    hg commit -m "added file 1"
+    echo "file 1" >> file_1
+    echo "file 2" > file_2
+    hg add file_2
+    hg commit -m "added file 2"
+    for i in 1 2; do echo "$i$i$i$i" >> file_$i; done
+    hg commit -m "final mods"
+fi
+
+hg_git_01_conversion_01=$DIR_TO_USE/02_git_conversion_01
+if ! test -d $hg_git_01_conversion_01; then
+    # convert it to git
+    mkdir $hg_git_01_conversion_01
+    cd $hg_git_01_conversion_01
+    hg clone $hg_git_01_source in_01
+    cd in_01
+    init_and_config_hggit
+    hg bookmark -r default master
+    hg gexport
+    test 3 -eq $(git log --oneline | wc -l)
+    cd -
+    # convert it again to git & compare
+    hg clone $hg_git_01_source in_02
+    cd in_02
+    init_and_config_hggit
+    hg bookmark -r default master
+    hg gexport
+    test 3 -eq $(git log --oneline | wc -l)
+    cd -
+    # compare
+    diff -u in_0{1,2}/.hg/git-mapfile
+fi
+
+hg_git_01_conversion_02=$DIR_TO_USE/03_git_clone_01
+if ! test -d $hg_git_01_conversion_02; then
+    mkdir $hg_git_01_conversion_02
+    cd $hg_git_01_conversion_02
+    git clone $hg_git_01_conversion_01/in_01 first_clone
+    cd first_clone
+    git fsck
+    test 3 -eq $(git log --oneline | wc -l)
+    cd -
+    git clone $hg_git_01_conversion_01/in_02 second_clone
+    cd second_clone
+    git fsck
+    test 3 -eq $(git log --oneline | wc -l)
+    cd -
+fi
+
+# now clone the git repo & convert to hg using convert
+git_hg_01_conversion_01=$DIR_TO_USE/04_hg_conversion_01
+if ! test -d $git_hg_01_conversion_01; then
+    mkdir $git_hg_01_conversion_01
+    cd $git_hg_01_conversion_01
+    hg convert $hg_git_01_conversion_02/first_clone convert_01_01
+    hg --cwd convert_01_01 log > convert_01_01.log
+    hg convert $hg_git_01_conversion_02/first_clone convert_01_02
+    hg --cwd convert_01_02 log > convert_01_02.log
+    # no changes means repeatable conversion from same repo
+    diff convert_01_0[12].log
+
+    hg convert $hg_git_01_conversion_02/second_clone convert_02_01
+    hg --cwd convert_02_01 log > convert_02_01.log
+    # no changes means repeatable conversion from identical repo
+    diff convert_0[12]_01.log
+fi
+
+# now clone the git repo & convert to hg using hg-git
+git_hg_01_conversion_02=$DIR_TO_USE/05_hg_conversion_02
+if ! test -d $git_hg_01_conversion_02; then
+    mkdir $git_hg_01_conversion_02
+    cd $git_hg_01_conversion_02
+    hg clone $hg_git_01_conversion_02/first_clone convert_01_01
+    hg --cwd convert_01_01 log > convert_01_01.log
+    hg clone $hg_git_01_conversion_02/first_clone convert_01_02
+    hg --cwd convert_01_02 log > convert_01_02.log
+    # no changes means repeatable conversion from same repo
+    diff convert_01_0[12].log
+
+    hg clone $hg_git_01_conversion_02/second_clone convert_02_01
+    hg --cwd convert_02_01 log > convert_02_01.log
+    # no changes means repeatable conversion from identical repo
+    diff convert_0[12]_01.log
+fi
+
+# compare results between original hg repo, and converted repos
+git_hg_01_conversion=$DIR_TO_USE/06_round_trip
+if ! test -d $git_hg_01_conversion; then
+    mkdir $git_hg_01_conversion
+    cd $git_hg_01_conversion
+
+    # check main data, but not branches or tags, as we know that changes
+    # in a defined, but complex, manner
+    hg --cwd $hg_git_01_source log --template "{rev}:{node}:{date}\n" >original.log
+    hg --cwd $git_hg_01_conversion_01/convert_02_01 log --template "{rev}:{node}:{date}\n" >using_convert.log
+    hg --cwd $git_hg_01_conversion_02/convert_02_01 log --template "{rev}:{node}:{date}\n" >using_hggit.log
+
+    # we don't expect the convert command to round trip
+    diff original.log using_convert.log &>/dev/null || :
+
+    # we do expect the hg-git command to round trip
+    diff original.log using_hggit.log 
+fi
