@@ -107,13 +107,68 @@ if ! test -d $BLEND_REPO; then
     git replace $first_commit_in_new_repo $last_commit_in_old_repo
     cd -
 fi
-echo "SUCCESS by eyeball!!"
-echo "still to do:"
+#   - verify shasums match for code in both new repo & blended repo
+last_commit_in_new_repo=$(git --git-dir $NEW_REPO/.git log --oneline | head -1 | cut -d\  -f1)
+last_commit_in_blended_repo=$(git --git-dir $BLEND_REPO/blended_repo/.git log --oneline | head -1 | cut -d\  -f1)
+test $last_commit_in_blended_repo = $last_commit_in_new_repo
 
-echo \#   - verify shasums match for code in both new repo \& blended repo
-echo \#
-echo \#   - make changes in new repo, and pull them into blended rep
-echo \#       - does this work?
-echo \#   - make changes in blended repo and push to new repo:
-echo \#       - does this work?
-echo \#       - does it push just new or history upstream?
+first_commit_in_old_repo=$(git --git-dir $OLD_REPO/.git log --oneline | tail -1 | cut -d\  -f1)
+first_commit_in_blended_repo=$(git --git-dir $BLEND_REPO/blended_repo/.git log --oneline | tail -1 | cut -d\  -f1)
+test $first_commit_in_blended_repo = $first_commit_in_old_repo
+
+#   - make changes in new repo, and pull them into blended rep
+#       - does this work?
+pull_from_upstream=$DIR_TO_USE/05_pull_from_upstream
+if ! test -d $pull_from_upstream; then
+    mkdir $pull_from_upstream
+    cd $pull_from_upstream
+    # clone new and blended so we can make local changes
+    git clone $NEW_REPO new_repo
+    git clone $BLEND_REPO/blended_repo blended_repo
+    cd new_repo
+    echo "file 3" >> file_3
+    git add file_3
+    git commit -m "add file 3"
+    cd -
+    cd blended_repo
+    git remote add --mirror=fetch local_new ../new_repo
+    git pull local_new master
+    cd -
+    #   - verify shasums match for code in both new repo & blended repo
+    last_commit_in_new_repo=$(git --git-dir new_repo/.git log --oneline | head -1 | cut -d\  -f1)
+    last_commit_in_blended_repo=$(git --git-dir blended_repo/.git log --oneline | head -1 | cut -d\  -f1)
+    test $last_commit_in_blended_repo = $last_commit_in_new_repo
+fi
+
+#   - make changes in blended repo and push to new repo:
+#       - does this work?
+#       - does it push just new or history upstream?
+push_to_upstream=$DIR_TO_USE/06_push_to_upstream
+if ! test -d $push_to_upstream; then
+    mkdir $push_to_upstream
+    cd $push_to_upstream
+    # clone new and blended so we can make local changes
+    git clone --bare $NEW_REPO new_repo
+    git clone $BLEND_REPO/blended_repo blended_repo
+    cd blended_repo
+    git remote add --mirror=fetch local_new ../new_repo
+    echo "file 4" >> file_4
+    git add file_4
+    git commit -m "add file 4"
+    git push local_new
+    cd -
+    cd new_repo
+    cd -
+    #   - verify shasums match for code in both new repo & blended repo
+    last_commit_in_new_repo=$(git --git-dir new_repo log --oneline | head -1 | cut -d\  -f1)
+    last_commit_in_blended_repo=$(git --git-dir blended_repo/.git log --oneline | head -1 | cut -d\  -f1)
+    test $last_commit_in_blended_repo = $last_commit_in_new_repo
+
+    # we don't expect the grafted history to be pushed
+    first_commit_in_new_repo=$(git --git-dir new_repo log --oneline | tail -1 | cut -d\  -f1)
+    first_commit_in_blended_repo=$(git --git-dir blended_repo/.git log --oneline | tail -1 | cut -d\  -f1)
+    test $first_commit_in_blended_repo != $first_commit_in_old_repo
+fi
+
+echo "SUCCESS by eyeball!!"
+
