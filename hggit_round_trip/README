@@ -1,0 +1,21 @@
+The question is if there are "round trip" issues when the commit from
+git->hg comes back to the git repo via a different route.
+
+For example:
+
+  RoR (hg) ----------------> github_read_only (git)
+       ^                            |
+       |                            v
+       |                      fork_on_github
+       |                            |
+       |                            v
+       +--------------------< clone_to_pc
+                              (with hg commit support)
+                                    ^
+                                    |
+                              local commits
+
+If the 2 separate converters do not do the same thing, the commit will
+cause a change when the next update happens.
+
+This case is tested in round_trip_single_commit.sh
