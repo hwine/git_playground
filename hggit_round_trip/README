@@ -1,7 +1,7 @@
 The question is if there are "round trip" issues when the commit from
 git->hg comes back to the git repo via a different route.
 
-For example:
+For example (RoR is repository of record):
 
   RoR (hg) ----------------> github_read_only (git)
        ^                            |
@@ -18,4 +18,12 @@ For example:
 If the 2 separate converters do not do the same thing, the commit will
 cause a change when the next update happens.
 
-This case is tested in round_trip_single_commit.sh
+This case is tested in round_trip_single_commit.sh - you should be able
+to run it on any machine wiht:
+    - bash
+    - git
+    - hg
+    - hggit extension
+
+First pass does some one time setup, then following runs just simulate
+"developer changes and landing changes on RoR".
