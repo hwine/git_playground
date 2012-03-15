@@ -48,7 +48,7 @@ init_and_config_hggit() {
 
 step_start() {
     step_name=
-    echo -n "$@"
+    echo -n "    $@"
     if test "$DEBUG_OUT" != "/dev/null"; then
         step_name="$1"
         echo "$@ START">>$DEBUG_OUT
@@ -67,6 +67,7 @@ step_end() {
 #   - create an hg RoR (repository of record)
 HG_ROR=$DIR_TO_USE/01-hg_RoR
 if ! test -d $HG_ROR; then
+    echo "The following steps would be done one time only by releng:"
     step_start "Creating an hg RoR (repository of record)"
     {
     mkdir $HG_ROR
@@ -131,6 +132,7 @@ fi
 git_clones=$DIR_TO_USE/04_git_clones
 DEV_GIT=$git_clones/clone_on_pc
 if ! test -d $git_clones/; then
+    echo -e "\nThe following steps would be done once by each committer:"
     step_start "Clone 2x (for fork on github & clone to dev pc)"
     {
     mkdir $git_clones/
@@ -154,6 +156,7 @@ fi
 #       re-executed every time the script is run
 
 #   - make git commit to 2nd clone
+echo -e "\nThe following steps represent a commit cycle:"
 step_start "Make git commit to 2nd clone (dev pc)"
 {
 cd $DEV_GIT
@@ -169,7 +172,7 @@ cmp $git_clones/rev_list_pre_commit $git_clones/rev_list_post_commit &&
 step_end
 
 #   - convert to hg & push to RoR
-step_start "Convert to hg & push to RoR from dev pc"
+step_start "\"super push\" - convert to hg & push to RoR from dev pc"
 {
 hg gimport
 hg push hgror
@@ -179,6 +182,7 @@ step_end
 # Now we can start checking for problems. All of the following should be
 # smooth (no errors, no odd messages):
 #   - process in hg clone
+echo -e "\nThe following steps would be done automatically to update github:"
 step_start "Push to mock github from RoR"
 {
 cd $git_conversion_01/in_01
@@ -190,6 +194,7 @@ git push --all github
 } >>$DEBUG_OUT 2>&1
 step_end
 
+echo -e "\nThe following steps are github users updating their local repot:"
 #   - pull to 1st git clone
 step_start "Pull to 1st git clone (fork on github)"
 {
