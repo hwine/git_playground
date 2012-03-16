@@ -1,0 +1,44 @@
+For pre-existing git repos desiring releng/buildbot services, branches
+need to be split to separate hg repositories (part of the contract to
+get non-try buildbot services).
+
+Also co-incident with the repo split is transitioning from a git RoR to
+a set of hg RoR. For teams that really need a single git repo for their
+workflow, recombining the master RoR will be explored.
+
+These scenarios are tested in script files in this directory - you
+should be able to run it on any machine wiht:
+    - bash
+    - git
+    - hg
+    - hggit extension
+
+Scenario 1 - split git w/ 3 branches to 3 hg repos
+--------------------------------------------------
+
+demo script: split-git-to-hg.sh
+
+The assumption is the 3 existing branches map to dev, stablilation (or
+beta), and release:
+
+                            +------>  hg-release
+                            |
+                            |
+     git-ror ---------------+------>  hg-beta
+                            |
+                            |
+                            +------>  hg-dev
+
+Of course, this conversion must be incremental to minimize down time.
+The scenario can be exercised via the split-git-to-hg.sh script. The
+first execution will do the initial conversion. Subsequent runs will
+simulate ongoing commits to the git-ror and incremental conversion to
+hg.
+
+Scenario 2 - recombine split git repos into one git repo
+--------------------------------------------------------
+
+demo script: not-done-yet
+
+This may not be needed in practice, but it is of interest to know if it
+can be done.
