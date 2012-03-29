@@ -1,7 +1,11 @@
-The question is if there are "round trip" issues when the commit from
-git->hg comes back to the git repo via a different route.
+There are several flows to consider, as there are multiple paths for a
+"round trip".  If the separate converters do not do the identical
+transformations, the commit will cause a conflicts when it comes back
+around to the originator, causing a mess. [1]
 
-For example (RoR is repository of record):
+The simplest case is a developer who is also a committer on hg.m.o, so
+there is only one change to propagate in a closed loop. The diagram for
+this case is (RoR is repository of record):
 
   RoR (hg) ----------------> github_read_only (git)
        ^                            |
@@ -15,15 +19,43 @@ For example (RoR is repository of record):
                                     |
                               local commits
 
-If the 2 separate converters do not do the same thing, the commit will
-cause a change when the next update happens.
-
 This case is tested in round_trip_single_commit.sh - you should be able
-to run it on any machine wiht:
+to run it on any machine with:
     - bash
     - git
     - hg
     - hggit extension
+
+First pass does some one time setup, then following runs just simulate
+"developer changes and landing changes on RoR".
+
+The more common case is where the contributor does not have commit
+privileges, and the committer must incorporate their changes before
+landing them. This leads to 2 loops, both being independently modified:
+
+  RoR (hg) ---> github_read_only (git)
+       ^               |         |
+       |               |         +------+
+       |               |                |
+       |               v                v
+       |         fork_on_github    fork_on_github
+       |           (committer)      (contributor)
+       |               |               |     ^
+       |               |     pull_rqst |     | fix & commit
+       |                    +----------+     | back to fork
+       |               |    |                v
+       |               v    v        clone_on_contributor_pc
+       +--------< clone_on_commiter_pc 
+                          ^
+                          |
+                          v
+                pull from contributor
+                fork, fix & commit
+
+If the 2 separate converters do not do the same thing, the commit will
+cause a change when the next update happens.
+
+This case will be tested in round_trip_full_case.sh
 
 First pass does some one time setup, then following runs just simulate
 "developer changes and landing changes on RoR".
