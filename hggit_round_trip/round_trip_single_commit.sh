@@ -40,7 +40,7 @@ init_and_config_hggit() {
     echo >>.hg/hgrc "[extensions]"
     echo >>.hg/hgrc "hggit="
     echo >>.hg/hgrc "[git]"
-    echo >>.hg/hgrc "intree=1"
+    echo >>.hg/hgrc "intree=0"
     hg help hggit | grep -q "^hg: unknown command" &&
         die "hggit not installed"
     return 0
@@ -94,7 +94,7 @@ if ! test -d $git_conversion_01; then
     {
     mkdir $git_conversion_01
     cd $git_conversion_01
-    hg clone $HG_ROR in_01
+    hg clone --noupdate $HG_ROR in_01
     mkdir out_01
     cd out_01
     git init --bare
@@ -107,7 +107,7 @@ if ! test -d $git_conversion_01; then
     cd -
     # now clone that bare repository to have one easier to view with
     # tools like SourceTree
-    git clone in_01/.git out_02
+    git clone in_01/.hg/git out_02
     } >>$DEBUG_OUT 2>&1
     step_end
 fi
@@ -121,7 +121,7 @@ if ! test -d $GITHUB_MASTER; then
     cd $GITHUB_MASTER
     git init --bare
     # now push to that
-    cd $git_conversion_01/in_01
+    cd $git_conversion_01/in_01/.hg/git
     git remote add github $GITHUB_MASTER
     git push --all github
     } >>$DEBUG_OUT 2>&1
@@ -190,7 +190,7 @@ hg pull -u
 hg bookmark -f -r default master
 hg gexport
 #   - push to mock github
-git push --all github
+git --git-dir .hg/git push --all github
 } >>$DEBUG_OUT 2>&1
 step_end
 
@@ -220,3 +220,6 @@ cmp $git_clones/rev_list_post_commit $git_clones/rev_list_post_pull ||
     die "round trip failed!"
 } >>$DEBUG_OUT 2>&1
 step_end
+
+echo "Scenario completed successfully."
+exit 0
