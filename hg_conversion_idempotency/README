@@ -27,7 +27,7 @@ init_and_config_hggit() {
     echo >>.hg/hgrc "[extensions]"
     echo >>.hg/hgrc "hggit="
     echo >>.hg/hgrc "[git]"
-    echo >>.hg/hgrc "intree=1"
+    echo >>.hg/hgrc "intree=0"
     hg help hggit | grep -q "^hg: unknown command" &&
         die "hggit not installed"
     return 0
@@ -66,7 +66,7 @@ if ! test -d $hg_git_01_conversion_01; then
     init_and_config_hggit
     hg bookmark -r default master
     hg gexport
-    test 3 -eq $(git log --oneline | wc -l)
+    test 3 -eq $(git --git-dir .hg/git log --oneline | wc -l)
     cd -
     # convert it again to git & compare
     hg clone $hg_git_01_source in_02
@@ -74,7 +74,7 @@ if ! test -d $hg_git_01_conversion_01; then
     init_and_config_hggit
     hg bookmark -r default master
     hg gexport
-    test 3 -eq $(git log --oneline | wc -l)
+    test 3 -eq $(git --git-dir .hg/git log --oneline | wc -l)
     cd -
     # compare
     diff -u in_0{1,2}/.hg/git-mapfile
@@ -84,12 +84,12 @@ hg_git_01_conversion_02=$DIR_TO_USE/03_git_clone_01
 if ! test -d $hg_git_01_conversion_02; then
     mkdir $hg_git_01_conversion_02
     cd $hg_git_01_conversion_02
-    git clone $hg_git_01_conversion_01/in_01 first_clone
+    git clone $hg_git_01_conversion_01/in_01/.hg/git first_clone
     cd first_clone
     git fsck
     test 3 -eq $(git log --oneline | wc -l)
     cd -
-    git clone $hg_git_01_conversion_01/in_02 second_clone
+    git clone $hg_git_01_conversion_01/in_02/.hg/git second_clone
     cd second_clone
     git fsck
     test 3 -eq $(git log --oneline | wc -l)
