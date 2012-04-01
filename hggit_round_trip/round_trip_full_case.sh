@@ -335,13 +335,18 @@ main() {
 if test $# -eq 0; then
     main
 else
-    do_setup_if_needed
+    setup_already_checked=false
+    run_step() {
+        $setup_already_checked || do_setup_if_needed
+        setup_already_checked=true
+        "$@"
+    }
     while test $# -gt 0; do
         case "$1" in
-        dc|dev) make_contributor_commit ;;
-        cc) make_committer_commit ;;
-        land*own) land_from_own_repo ;;
-        land*other) land_from_contributors_repo ;;
+        dc|dev)     run_step make_contributor_commit ;;
+        cc)         run_step make_committer_commit ;;
+        land*own)   run_step land_from_own_repo ;;
+        land*other) run_step land_from_contributors_repo ;;
         -h | --help) usage ;;
         -*) usage "unknown option '$1'" ;;
         *) usage "unknown step '$1'" ;;
