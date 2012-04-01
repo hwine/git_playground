@@ -58,4 +58,20 @@ cause a change when the next update happens.
 This case will be tested in round_trip_full_case.sh
 
 First pass does some one time setup, then following runs just simulate
-"developer changes and landing changes on RoR".
+"contributor & committer each making (non-conflicting) changes and
+committer landing changes on RoR". For round_trip_full_case.sh, you can
+easily specify your own set of steps, use the --help option for details.
+    ./round_trip_full_case.sh --help
+    usage: round_trip_full_case.sh [steps]
+    Without any steps, perform the built-in series. All commits are made
+    in a way to ensure no conflicts will occur.
+
+    Steps are:
+        dc | dev    simulate a contributor commit
+        cc | own    simulate a commit by the committer
+        land-other  land the contributor's commit
+        land-own    land the committer's changes to hg.m.o
+
+    Example:
+        ./round_trip_full_case.sh dc dc land-other cc land-own
+
