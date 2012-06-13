@@ -1,0 +1,58 @@
+#!/bin/bash
+
+set -eu
+
+landers=('fred <fred@example.com>'
+         'barney <b<barney@example.com>'
+         'wilma wilma@example.com'
+        )
+
+repo_dir=${1:-01_hg_repos}
+# convert to abs path, even if doesn't exist
+repo_dir="$(cd $(dirname $repo_dir); /bin/pwd)/${repo_dir##*/}"
+
+if ! test -d $repo_dir; then
+    # do in subshell to avoid PWD issues
+    (
+    mkdir $repo_dir
+    cd $repo_dir
+    hg init bad_repo
+    cd bad_repo
+    touch file
+    hg add file
+    for l in "${landers[@]}"; do
+        echo $l >>file
+        hg commit --user "$l" -m "change by $l"
+    done
+    )
+fi
+
+clone_dir="${repo_dir/01/02}_clone"
+if ! test -d $clone_dir; then
+    # do in subshell to avoid PWD issues
+    (
+    mkdir $clone_dir
+    cd $clone_dir
+    hg clone $repo_dir/bad_repo bad_clone
+    cd bad_clone
+    cat >>.hg/hgrc <<EOF
+[extensions]
+hggit=
+[git]
+intree=1
+EOF
+    git init .
+    hg bookmark -r default master
+    hg gexport
+    )
+fi
+
+bad_count=$(git --git-dir $clone_dir/bad_clone/.git fsck 2>&1 | grep -c '^error in commit')
+
+status=$(test $bad_count -eq 0 && echo "good" || echo "BAD")
+echo "$status conversion using:"
+hg --version -q
+git --version -q
+./check_pkg_version hg-git dulwich
+
+

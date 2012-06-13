@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+
+import pkg_resources
+import sys
+
+for pkg in sys.argv[1:]:
+    try:
+        distribution = pkg_resources.require(pkg)[0]
+        d = {
+            'version' : distribution.version,
+            'name'    : distribution.project_name,
+            }
+        print "Package found: %(name)s; version: %(version)s" % d
+    except pkg_resources.DistributionNotFound:
+        print "Package not installed: %s" % (pkg,)
