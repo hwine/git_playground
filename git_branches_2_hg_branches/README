@@ -1,0 +1,74 @@
+For smaller git repos, where the RoR is maintained on git.m.o, we need a
+way to produce & update a matching hg repo (with branches).
+
+This is our interim approach to providing build-on-commit services to
+git RoR, as there is no pushlog tooling for git.m.o at this time.
+
+These scenarios are tested in script files in this directory - you
+should be able to run it on any machine wiht:
+    - bash
+    - git
+    - hg
+    - hggit extension
+
+Scenario 1 - convert git w/ 3 branches to hg w/ 3 bookmarks
+-----------------------------------------------------------
+
+demo script: split-git-to-hg.sh
+
+In this case, there is no limit to the number of branches that can be
+handled:
+
+     git-ror ---> conversion -->  hg-ror
+
+The hggit extension will convert git branches to their "closest"
+relative, hg bookmarks. The bookmarks won't be pushed to hg-ror unless
+explicitly instructed.
+
+The repositories involved in this scenario are:
+
+    01-git_RoR/ -- git repository
+    02-conversion_to_hg/converged -- git & hg repository
+    03-hg_converted/converged -- hg repository
+
+Of course, this conversion must be incremental to minimize down time.
+The scenario can be exercised via the split-git-to-hg.sh script. The
+first execution will do the initial conversion. Subsequent runs will
+simulate ongoing commits to the git-ror and incremental conversion to
+hg.
+
+Scenario 2 - convert git w/ 3 branches to 3 hg per branch repos
+---------------------------------------------------------------
+
+The assumption is the 3 existing branches map to dev, stablization (or
+beta), and release::
+
+                  /-> dev-hggit -----------> hg-dev
+     git-ror ->--X--> stabilization-hggit -> hg-stabilization
+                  \-> release-hggit -------> hg-release
+
+The hggit extension will convert git branches to their "closest"
+relative, hg bookmarks. However, in this case, we want full hg branches.
+This is achieved by only pulling in the branch we want into the
+conversion repositories. That does require defining the mapping between
+the git branches and the hg repositories inside the script. While this
+does allow for the branches to be renamed, it also requires manual
+update anytime a new branch is added (and the creation of another
+repository).
+
+The repositories involved in this scenario are:
+
+    01-git_RoR/ -- git repository
+    02-conversion_to_hg/master-hggit -- master branch git & hg
+    02-conversion_to_hg/release-hggit -- release branch git & hg
+    02-conversion_to_hg/stabilization-hggit -- stabilization branch git & hg
+    03-hg_converted/hg_beta -- stabilization branch only as hg default
+    03-hg_converted/hg_dev -- dev branch only as hg default
+    03-hg_converted/hg_release -- release branch only as hg default
+
+Of course, this conversion must be incremental to minimize down time.
+The scenario can be exercised via the split-git-to-hg.sh script. The
+first execution will do the initial conversion. Subsequent runs will
+simulate ongoing commits to the git-ror and incremental conversion to
+hg.
+
